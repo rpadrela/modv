@@ -1,3 +1,5 @@
-module github.com/poloxue/modv
+module github.com/rpadrela/modv
 
 go 1.12
+
+require github.com/stretchr/testify v1.6.1

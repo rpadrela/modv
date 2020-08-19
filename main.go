@@ -1,9 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"github.com/rpadrela/modv/graph"
 	"os"
 	"runtime"
+	"sort"
 )
 
 func PrintUsage() {
@@ -20,6 +23,34 @@ func PrintUsage() {
 	fmt.Printf("\n\n")
 }
 
+func parseFlags() (graph.ParseOptions, graph.RenderOptions) {
+	parseOptions := graph.ParseOptions{}
+
+	ignoreVersionPtr := flag.Bool("ignoreVersion", false, "if true, all versions of the same module will be treated as one")
+	//ignoreIndirectPtr := flag.Bool("ignoreIndirect", false, "if true, graph will only show module's direct dependencies")
+	hidePathPtr := flag.Bool("hidePath", false, "if true, graph will not display the path of the module")
+	flag.Var(&parseOptions.IgnoreModules, "ignoreModules", "comma-separated list of modules to ignore including path (e.g. github.com/x/sys")
+	flag.Parse()
+
+	sort.Strings(parseOptions.IgnoreModules)
+
+	if ignoreVersionPtr != nil {
+		parseOptions.IgnoreVersion = *ignoreVersionPtr
+	}
+
+	if ignoreIndirectPtr != nil {
+		parseOptions.IgnoreIndirect = *ignoreIndirectPtr
+	}
+
+	renderOptions := graph.RenderOptions{}
+	renderOptions.HideVersion = parseOptions.IgnoreVersion
+	if hidePathPtr != nil {
+		renderOptions.HidePath = *hidePathPtr
+	}
+
+	return parseOptions, renderOptions
+}
+
 func main() {
 	info, err := os.Stdin.Stat()
 	if err != nil {
@@ -34,14 +65,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	mg := NewModuleGraph(os.Stdin)
-	if err := mg.Parse(); err != nil {
+	parseOptions, renderOptions := parseFlags()
+
+	mg := graph.NewModuleGraph(os.Stdin)
+	if err := mg.Parse(parseOptions); err != nil {
 		fmt.Println("mg.Parse: ", err)
 		PrintUsage()
 		os.Exit(1)
 	}
 
-	if err := mg.Render(os.Stdout); err != nil {
+	if err := mg.Render(os.Stdout, renderOptions); err != nil {
 		fmt.Println("mg.Render: ", err)
 		PrintUsage()
 		os.Exit(1)
